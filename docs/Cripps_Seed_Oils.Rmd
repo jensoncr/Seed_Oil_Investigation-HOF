@@ -1,0 +1,340 @@
+---
+title: "Seed Oil Investigation"
+author: "Jenson Cripps"
+date: "2024-04-29"
+output:
+  html_document:
+    code_folding: show
+    highlight: haddock
+    number_sections: yes
+    theme: lumen
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
+  pdf_document:
+    extra_dependencies: ["dcolumn"]
+    number_sections: yes
+    toc: yes
+    toc_depth: '4'
+  word_document:
+    toc: yes
+    toc_depth: '4'
+urlcolor: blue
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width=8, fig.height=4)
+# get the output format for stargazer only:
+# results = `asis`
+# stargazer( type = ) one of the following:
+## if run in studio, set as "text"
+## if knit to PDF, set as "latex"
+## if knit to HTML, set as "html"
+# We made it automatic:
+output_format <- ifelse(is.null(knitr::opts_knit$get("rmarkdown.pandoc.to")),
+                        "text", knitr::opts_knit$get("rmarkdown.pandoc.to"))
+
+knitr::opts_chunk$set(echo = TRUE)
+if(!require('pacman')) {install.packages('pacman')}
+pacman::p_load(tidyverse, ggplot2, sf, mapview,dplyr,car, corrplot, rnaturalearth)
+```
+
+\pagebreak 
+
+# Introduction / Hypothesis {-}
+
+As food processing technologies have evolved, seed oils have emerged as a highly refined food product which is used globally. Due to this intensive processing, many communities are beginning to question the potential adverse health impacts of consuming these products. Using statistical analysis in R, I will seek to uncover some more truth regarding the health impacts of seed oils. 
+
+**Table of contents:**
+
+1. Motivations for study:
+    - Influencers
+    - Papers  
+      
+      
+2. Brief History
+    - Overview of the history of seed oils 
+    - Overview on the fear among groups 
+    - Overview on the literature around seed oils 
+    
+
+3. Exploratory data analysis 
+    - Reading, merging, and cleaning data
+    
+
+4. Statistical Analysis 
+    - Linear regression with obesity rates 
+    - Map plot of seed oil consumption 
+    - Linear regression with life expectancy
+    
+
+5. Summary
+    - Conclusion of findings 
+    - Recommendations for using findings
+    
+
+6. Limitations and Shortcomings  
+    - Expressing data limitations 
+    - Potential errors in study
+    
+
+7. Appendix / Data Sources
+    - Citing data resources utilized in study
+
+
+\pagebreak 
+
+
+
+# Motivations for the Study
+
+![](./seed_oil_image.jpg)
+
+
+Seed oils are a contentious topic for their cornerstone role in the diet of many individuals. Up until recently, seed oils have gone largely uncontested in their potions in the food industry, but with the explosion of certain health influencers like **Paul Saladino**, seed oils have begun to come under fire for their potentially dangerous impacts on health. In a recent [youtube video](https://www.youtube.com/watch?v=c1kyubykrvA&t=7s), Paul discusses how Canola oil has evolved from an engine lubricant into a staple in the diet of many. This claim elicits a tremendous amount of fear and curiosity into the field of processed foods and seed oils. Given the novelty of these claims, I believe that it is important to investigate further. When considering the context of the history of food, there have been a tremendous amount of food innovations such as pesticides and GMOs which have sparked debate for the health concerns around food technologies. In the end, these debates help provide clarity and drive research towards improving the health of many. With this being said, I want to explore these claims through some data analysis in order to see if I can discover any significant trends that could unlock more research into the effects of seed oils. 
+
+
+
+
+# Brief History of Seed Oils
+
+Seed oils have long been intertwined with human history, serving a critical role in cooking, medicine, and lighting. Originating, from ancient civilizations such as the Egyptians and Chinese, the extraction of oils from seeds like soy played pivotal roles in daily life. Initially, the oils were extracted through simple mechanical means, but evolved dramatically through the Industrial Revolution. When the hydraulic press was invented in [1795](https://thewerkscandc.com/news/history-hydraulic-press#:~:text=The%20individual%20who%20is%20credited,for%20the%20Bramah%20Hydraulic%20Press.), the availability and efficiency of these seed oils rapidly increased due to the ability to produce seed oils at scale. 
+
+From the early uses in ancient lamps to modern kitchens and industrial applications, the production of seed oils expanded dramatically. The 20th century saw innovations such as [hydrogenation](https://lipidlibrary.aocs.org/resource-material/scientific-milestones-in-lipid-research/the-battle-over-hydrogenation-(1903-1920)#:~:text=Hydrogenation%20of%20organic%20substances%20in,Britain%20and%20Germany%20in%201903) which led to the creation of popular consumer products such as margarine. These developments coincided with with a surge in the cultivation of crops, driven by a demand for versatile, affordable vegetable oils. This period of rapid growth highlighted the importance for seed oils in the context of global agricultural and industrial economies. 
+
+In recent years, seed oils have come under scrutiny due to **potential health implications.** The debate focuses on the effects of polyunsaturated fats, particularly omega-6 fatty acids, and the presence of trans fats produced during hydrogenation. With this, researchers and health professionals have raised concerns that excessive consumption of certain seed oils could be linked to a range of health issues, including obesity and heart disease. Sparking a growing body of academic literature, there is yet to be any overwhelmingly conclusive findings related to the health implications of seed oils. The academic perspective is diverse with studies highlighting both the benefits and risks associated with the fat contents. Some literature highlights the potential of seed oils to [improve lipid profiles](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6121943/) when replacing saturated fats in one's diet, but other studies suggest that the imbalance in [omega-6 and omega-3 fatty acids intake](https://pubmed.ncbi.nlm.nih.gov/12442909/) in typical Western-diets could be exacerbating health risks. Beyond the nutritional context, processing methods of seed oils, such as the use of [chemical solvents and high heat](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8767382/), has been a focal point of research, questioning the impact of refining on oil quality and safety. 
+
+The journey of seed oils from ancient times to modern times and their variety of applications from the factory to the table is a testament to their enduring importance and versatility. While their role in global cuisine is undisputed, the ongoing academic debate ensures that seed oils will remain a significant topic of research and discussion in the pursuit of optimizing human health through diet. As new research digs into the complex role that seed oils have on our diets and well being, we can hopefully begin to discover whether seed oils are a viable staple in the consumer's diet. 
+
+# Exploratory Data Analysis: 
+
+**Study Objective:** What is the purpose of this study? 
+
+- Leverage limited data to uncover trends regarding seed oil consumption 
+- Investigate for possible correlations in purported health risks associated with consumption
+- Investigate how seed oils may be correlated to a general concept of human health 
+
+
+
+**The Dataset:** 
+
+- In setting out to investigate the health impacts associated with seed oils, it is clear that data availability would be a significant hurdle. There is simply no clear way of obtaining consumption data in a timely manner; therefore, it would be necessary to determine some proxy for seed oil consumption. Leveraging [2022 Seed Oil Imports by Country](https://oec.world/en/profile/hs/seed-oils#exporters-importers) from OEC allowed me to gather some idea the demand which countries expressed for seed oils. 
+
+- Following this retrieval of some demand number, I realized that countries would have widely different population numbers; therefore, the imports would need to be normalized on a per capita basis to provide some more representation of what an inhabitant in that country may be consuming. To do this, I brought in a [World Population Live Dataset](https://www.kaggle.com/datasets/whenamancodes/world-population-live-dataset) from 2022 to introduce population numbers for each country in 2022.
+
+- Lastly, I wanted to discover some factors related to obesity and life expectancy, so I imported the [National Adult Body Mass Index](https://ncdrisc.org/data-downloads-adiposity.html) from NCD RisC and I imported [life expectancy data](https://data.worldbank.org/indicator/SP.DYN.LE00.IN) from the World Bank. The World Bank provided reliable data up until 2015, so I decided to use the 2015 life expectancy numbers in my analysis. 
+
+
+To achieve the import data, I had to read from the CSV file in the data folder. I then extracted the relevant `Country` names and `Trade.Value` number which expresses the total amount of import value.
+
+```{r}
+# reading in the import data 
+import_data <- read.csv("data/Importers-of-Seed-Oils-2022-Click-to-Select-a-Country.csv") %>% select(Country, Trade.Value)
+```
+
+
+I read in the population data in a similar fashion and selected the `Name` and `Population` in 2022. 
+
+```{r}
+# reading in the population data 
+pop_data <- read.csv("data/World Population Live Dataset.csv") %>% select(Name, X2022)
+```
+
+
+Using the `Country` names, I merged the population data with the import data. Furthermore, I created a new column which would represent the per_capita consumption of seed oils through dividing the `Trade.Value` by the `Population` count. 
+
+```{r}
+# merging the population and import data 
+import_pop <- left_join(import_data, pop_data, by = c("Country" = "Name"))
+import_pop$per_capita <- import_pop$Trade.Value / import_pop$X2022
+```
+
+
+Introducing the BMI data, I had to read the information in and filter for the relevant year. I also made sure to only select the relevant columns which included displaying the `obesity percentage`. It is notable that this data also consists of underweight and morbidly obese metrics which could later be used to find more extreme effects. This data took a lot of manual cleaning as countries were represented differently across the datasets which would make it impossible to merge the data for analysis.
+
+```{r}
+# importing BMI information and cleaning to get the obesity >30kg/m^2 BMI
+bmi_data <- read.csv("data/2024_BMI_age_standardised_country.csv") %>% filter(Year == 2022) %>% select(Sex, Country.Region.World, Prevalence.of.BMI..30.kg.m...obesity.) %>% 
+  mutate(Country.Region.World = ifelse(Country.Region.World == "State of Palestine", "Palestine", Country.Region.World)) %>% 
+  mutate(Country.Region.World = ifelse(Country.Region.World == "United States of America", "United States", Country.Region.World)) %>% 
+  mutate(Country.Region.World = ifelse(Country.Region.World == "Brunei Darussalam", "Brunei", Country.Region.World)) %>%
+  mutate(Country.Region.World = ifelse(Country.Region.World == "DR Congo", "Democratic Republic of the Congo", Country.Region.World)) %>%
+  mutate(Country.Region.World = ifelse(Country.Region.World == "Congo", "Republic of the Congo", Country.Region.World)) %>%
+  mutate(Country.Region.World = ifelse(Country.Region.World == "Guinea Bissau", "Guinea-Bissau", Country.Region.World)) %>%
+  mutate(Country.Region.World = ifelse(Country.Region.World == "Viet Nam", "Vietnam", Country.Region.World))
+  
+```
+
+
+After thoroughly cleaning the data, I merged the population and consumption data with the BMI data to begin looking for patterns.
+
+```{r}
+# merging df with bmi and using missing values to clean data 
+
+#import_data[grepl("Viet", import_data$Country), ]
+#anti_join(bmi_data, import_pop, by = c("Country.Region.World" = "Country"))
+
+import_pop_bmi <- left_join(import_pop, bmi_data, by = c("Country" = "Country.Region.World"))
+names(import_pop_bmi)[6] <- "Obesity_Rate"
+```
+
+
+After running some statistical analysis, I realized that the consumption data hosted a few outliers, so I decided to analysis the mean and standard deviations of the data in order to filter out the outliers which existed beyond two standard deviations from the mean. It is also notable here that the BMI data provided BMI metrics for both women and men, so I decided to split the data in order to engage a more specific target. 
+
+```{r}
+# splitting the data into male and female for analysis and cleaning outliers
+
+data_male <- import_pop_bmi %>% filter(Sex == "Men")
+data_female <- import_pop_bmi %>% filter(Sex == "Women")
+
+mean_data <- mean(data_male$per_capita, na.rm = TRUE)
+sd_data <- sd(data_male$per_capita, na.rm = TRUE)
+threshold <- 2
+outliers <- data_male$per_capita[abs(data_male$per_capita - mean_data) > threshold * sd_data]
+
+data_male <- data_male %>% filter(per_capita < 58492.32, per_capita > 0)
+data_female <- data_female %>% filter(per_capita < 58492.32, per_capita > 0)
+
+```
+
+# Statistical Analysis  
+
+## Linear Regression with Obesity Rates
+
+Using the cleaned data, I ran some linear regressions between `obesity rates` and `per_capita` consumption. 
+
+```{r}
+# linear models 
+
+lm_results_male <- lm(Obesity_Rate ~ per_capita, data = data_male)
+lm_results_female <- lm(Obesity_Rate ~ per_capita, data = data_female)
+
+summary(lm_results_male) # showing a significant impact on male obesity
+summary(lm_results_female)
+
+```
+
+These findings suggest that consumption was linked to an small increase in obesity rates for men, with a degree of statistical significance. With women, the consumption showed a smaller potential decrease in obesity rates, but the finding is not statistically significant, nor is the effect very large. 
+
+
+Here, I decided to create a visualization of the linear models for both men and women in terms of `obesity_rate` and `consumption` in order to display these effects. 
+
+```{r}
+# creating a visualization 
+ggplot(data_male, aes(x = per_capita, y = Obesity_Rate)) + 
+  geom_point() + 
+  geom_smooth(method = "lm", col = "blue")
+
+ggplot(data_female, aes(x = per_capita, y = Obesity_Rate)) + 
+  geom_point() + 
+  geom_smooth(method = "lm", col = "red")
+```
+
+## Map plot of seed oil consumption 
+
+Utilizing the natural earth package, I merged the existing data frame with the spatial data in order to get a broad visualization of where seed oil consumption was most prevalent. In doing this, I found that there appeared to be a concentration in the Mediterranean region. I have heard before that the Mediterranean diet is known to be connected with longevity, so this sparked me to begin looking at some life expectancy measures to see if there was any correlation. 
+
+```{r}
+# removing outlier to check results and try again 
+
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+data_male[data_male$Country == "United States", "Country"] <- "United States of America" # fixing for viz
+
+merged_data <- left_join(world, data_male, by = c("name" = "Country"))
+
+ggplot(data = merged_data) +
+  geom_sf(aes(fill = per_capita), color = "white", size = 0.2) +
+  scale_fill_viridis_c(option = "viridis", name = "Per Capita\nConsumption") +
+  labs(title = "Per Capita Consumption of Seed Oils by Country",
+       caption = "Data source: ") +
+  theme_minimal()
+
+
+```
+
+
+Here, I read in a csv file of life expectancy by Country in 2022. I again merged this data with the spatial data in order to visualize and look for trends. I found that there did seem to be elevated life expectancy in the Mediterranean region, but there was also elevated life expectancy in regions such as the USA which did not exhibit high consumption of seed oils. 
+
+```{r}
+life_exp <- read.csv("data/Life Expectancy Data.csv") %>% filter(Year == 2015) %>% select(Country, Life.expectancy)
+
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+merged_data_2 <- left_join(world, life_exp, by = c("name" = "Country"))
+
+ggplot(data = merged_data_2) +
+  geom_sf(aes(fill = Life.expectancy), color = "white", size = 0.2) +
+  scale_fill_viridis_c(option = "viridis", name = "Life Expectancy") +
+  labs(title = "Life Expectancy by Country",
+       caption = "Data source: ") +
+  theme_minimal()
+```
+
+## Linear regression with life expectancy
+
+Seeking to investigate this further, I ran a linear model of the male data which captured the effects of `consumption` and `obesity rates` on `life expectancy`.
+```{r}
+data_male <- left_join(data_male, life_exp, by = "Country")
+
+lm_life_male <- lm(Life.expectancy ~ per_capita + Obesity_Rate, data = data_male)
+summary(lm_life_male)
+
+```
+
+This output is interesting because it is suggesting that obesity rates and consumption rates both have a statistically significant and positive relationship with life expectancy. 
+
+In order to highlight this relationship, I decided to plot this information in another chart which can help illustrate this interaction. 
+
+```{r}
+ggplot(data_male, aes(x = per_capita, y = Life.expectancy)) + 
+  geom_point() + 
+  geom_smooth(method = "lm", col = "green")
+
+ggplot(data_male, aes(x = Obesity_Rate, y = Life.expectancy)) + 
+  geom_point() + 
+  geom_smooth(method = "lm", col = "orange")
+```
+
+# Summary 
+
+## Conclusion of findings 
+
+- In conclusion, the findings from this report are interesting, but remain somewhat unsolved. The report was successful in showing a significant impact of seed oil consumption in relation to increased obesity and increased life expectancy for males, but provided inconclusive evidence for women. With this finding, I think it is plausible to determine that seed oils are an expression of a development in food technology and indicate some level of sophistication for a given country. Therefore, I believe there may be reasons beyond the sole consumption of seed oils that could account for these benefits to life expectancy. Furthermore, as obesity showed a positive correlation with life expectancy, I believe that potentially some level of obesity could indicate that a nation has abundant resources which limits the shortening of life expectancy from other fears such as food insecurity or malnutrition. In all, I am pleased with the confirmation that seed oil consumption shows some positive impact on obesity rates, and I believe that it could fulfill some need in the diet of many nations. 
+
+## Recommendations for using findings
+
+- With these findings, it may be advisable for developing nations to adopt seed oils as a means of achieving their nutritional needs. As we have seen, obesity is correlated with seed oil consumption, so nations which struggle with food insecurity may benefit from introducing more cost-effective seed oils into their diet. With the correlation in obesity rates and life expectancy, these countries could potentially see improvements in their overall life expectancy due to this addition. 
+
+- Additionally, countries which struggle from an existing obesity epidemic may elect to reduce the seed oils in their nation's diet. These nations could begin to create food standards, limiting the amount of seed oils that one can introduce in their products in an effort to control the obesity rate. 
+
+# Limitations and Shortcomings 
+
+## Expressing data limitations 
+
+- If possible, this study should be replicated through a more comprehensive data set. When using importation and population numbers as a proxy for seed oil consumption, a variety of factors which can influence the study present themselves. It would be far more beneficial to run this study using some sort of survey responses which could poll individuals about their specific seed oil consumption with the combination of their health data in order to paint a more granular picture. 
+
+## Potential errors in study
+
+- In all, it is important to note that importation may not always equate to consumption. Product could be imported without ingestion; therefore, it is difficult to quantify how much a nation consumes seed oils. Furthermore, this general importation number may not seek to explain what populations within a country consume those seed oils. This data provides a generalization which overlooks a lot of important specificity in the data. 
+
+- In terms of correlations, there could be a variety of factors beyond seed oil consumption that contribute to obesity and life expectancy such as: wealth, healthcare, stress, weather, culture, and beyond. Therefore, it is hard to reach the conclusion that seed oils have this direct impact, but with a more comprehensive model built with more comprehensive data, one could begin to look at some of these interactions more thoroughly. 
+
+# Explanation of Data Sources 
+
+- https://oec.world/profile/hs/seed-oils#exporters-importers
+    * Seed oil import numbers by country in 2022 
+    * Provided by OEC 
+
+- https://www.kaggle.com/datasets/whenamancodes/world-population-live-dataset
+    * 2022 Population dataset for every country 
+    * Provided by Aman Chauhan via Kaggle
+
+- https://ncdrisc.org/data-downloads-adiposity.html
+    * 2024 BMI Analysis by Country
+    * Provided by NCD RisC
+    
+- https://data.worldbank.org/indicator/SP.DYN.LE00.IN
+    * Life expectancy from birth for each Country 
+    * Data available up until 2015
